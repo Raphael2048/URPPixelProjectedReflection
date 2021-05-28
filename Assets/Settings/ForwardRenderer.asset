@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-3280086717970539593
+--- !u!114 &-3218844672452932002
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -9,14 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d40438751fe047e4da9c4fa5e0e3418c, type: 3}
-  m_Name: PixelProjectedReflectionFeature
+  m_Script: {fileID: 11500000, guid: 4acc5e874b42bd648978b62055f61326, type: 3}
+  m_Name: NewPixelProjectedReflectionRendererFeature
   m_EditorClassIdentifier: 
   m_Active: 1
   _settings:
-    projection: {fileID: 7200000, guid: 9e9971dcc1516624099b1d39e007c676, type: 3}
-    reflection: {fileID: 4800000, guid: f6556086a6f872c49aada4366c89e61f, type: 3}
-    filter: {fileID: 4800000, guid: a9f9f43c5439be84481b1491e85324a6, type: 3}
+    projection: {fileID: 7200000, guid: 322d2e62f1c5bb147aab95fd1e8eb567, type: 3}
+    reflection: {fileID: 4800000, guid: 645946183f50ff044adf2251cac65b41, type: 3}
+    filter: {fileID: 4800000, guid: eb615c6f2b21151419eea5eef77b4710, type: 3}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30,8 +30,8 @@ MonoBehaviour:
   m_Name: ForwardRenderer
   m_EditorClassIdentifier: 
   m_RendererFeatures:
-  - {fileID: -3280086717970539593}
-  m_RendererFeatureMap: b79be33682ca7ad2
+  - {fileID: -3218844672452932002}
+  m_RendererFeatureMap: 5ece4817d35d54d3
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   shaders:
     blitPS: {fileID: 4800000, guid: c17132b1f77d20942aa75f8429c0f8bc, type: 3}

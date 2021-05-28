@@ -2,7 +2,7 @@
 // However, if you want to author shaders in shading language you can use this teamplate as a base.
 // Please note, this shader does not necessarily match perfomance of the built-in URP Lit shader.
 // This shader works with URP 7.1.x and above
-Shader "ProjectedReflectionPlane"
+Shader "H3D/PixelProjectedReflection"
 {
 	Properties
 	{
@@ -154,8 +154,8 @@ Shader "ProjectedReflectionPlane"
 			#include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
 
 
-			TEXTURE2D(_CopyTexture);
-			SAMPLER(sampler_CopyTexture);
+			TEXTURE2D(_MirrorTexture);
+			SAMPLER(sampler_MirrorTexture);
 			
 			struct Attributes
 			{
@@ -241,7 +241,7 @@ Shader "ProjectedReflectionPlane"
 
 				
 			    // half3 indirectSpecular = GlossyEnvironmentReflection(reflectVector, brdfData.perceptualRoughness, occlusion);
-				half3 indirectSpecular = SAMPLE_TEXTURE2D_X(_CopyTexture, sampler_CopyTexture, uv);
+				half3 indirectSpecular = SAMPLE_TEXTURE2D_X(_MirrorTexture, sampler_MirrorTexture, uv);
 			    return EnvironmentBRDF(brdfData, indirectDiffuse, indirectSpecular, fresnelTerm);
 			}
 			
@@ -334,17 +334,89 @@ Shader "ProjectedReflectionPlane"
 			ENDHLSL
 		}
 
-			// Used for rendering shadowmaps
-			UsePass "Universal Render Pipeline/Lit/ShadowCaster"
+Pass
+        {
+            Name "ShadowCaster"
+            Tags{"LightMode" = "ShadowCaster"}
 
-				// Used for depth prepass
-				// If shadows cascade are enabled we need to perform a depth prepass. 
-				// We also need to use a depth prepass in some cases camera require depth texture
-				// (e.g, MSAA is enabled and we can't resolve with Texture2DMS
-				UsePass "Universal Render Pipeline/Lit/DepthOnly"
+            ZWrite On
+            ZTest LEqual
+            Cull[_Cull]
 
-				// Used for Baking GI. This pass is stripped from build.
-				UsePass "Universal Render Pipeline/Lit/Meta"
+            HLSLPROGRAM
+            // Required to compile gles 2.0 with standard srp library
+            #pragma prefer_hlslcc gles
+            #pragma exclude_renderers d3d11_9x
+            #pragma target 2.0
+
+            // -------------------------------------
+            // Material Keywords
+            #pragma shader_feature _ _ALPHATEST_ON _ALPHABLEND_ON _ALPHAPREMULTIPLY_ON
+
+            //--------------------------------------
+            // GPU Instancing
+            #pragma multi_compile_instancing
+            //#pragma shader_feature _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+
+            #pragma vertex ShadowPassVertex
+            #pragma fragment ShadowPassFragment
+
+            #include "./H3DPasses.hlsl"
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "DepthOnly"
+            Tags{"LightMode" = "DepthOnly"}
+
+            ZWrite On
+            ColorMask 0
+            Cull[_Cull]
+
+            HLSLPROGRAM
+            // Required to compile gles 2.0 with standard srp library
+            #pragma prefer_hlslcc gles
+            #pragma exclude_renderers d3d11_9x
+            #pragma target 2.0
+
+            #pragma vertex DepthOnlyVertex
+            #pragma fragment DepthOnlyFragment
+
+            // -------------------------------------
+            // Material Keywords
+            #pragma shader_feature _ALPHATEST_ON
+            //#pragma shader_feature _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+
+            //--------------------------------------
+            // GPU Instancing
+            #pragma multi_compile_instancing
+            
+            #include "./H3DPasses.hlsl"
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "Meta"
+            Tags{"LightMode" = "Meta"}
+
+            Cull Off
+
+            HLSLPROGRAM
+            // Required to compile gles 2.0 with standard srp library
+            #pragma prefer_hlslcc gles
+            #pragma exclude_renderers d3d11_9x
+
+            #pragma vertex UniversalVertexMeta
+            #pragma fragment UniversalFragmentMeta
+
+            #pragma shader_feature _EMISSION
+            #pragma shader_feature _ _ALPHATEST_ON _ALPHABLEND_ON _ALPHAPREMULTIPLY_ON
+            
+            #include "./H3DPasses.hlsl"
+            ENDHLSL
+        }
 		}
 
 			// Uses a custom shader GUI to display settings. Re-use the same from Lit shader as they have the

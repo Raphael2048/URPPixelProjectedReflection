@@ -3,9 +3,9 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-namespace UnityEngine.Experimental.Rendering.Universal
+namespace UnityEngine.Experiemntal.Rendering.Universal
 {
-    public class PixelProjectedReflectionFeature : ScriptableRendererFeature
+    public class PixelProjectedReflectionRendererFeature : ScriptableRendererFeature
     {
         [Serializable]
         public class Settings
@@ -17,17 +17,18 @@ namespace UnityEngine.Experimental.Rendering.Universal
 
         public Settings _settings;
         
-        private PixelProjectedReflectionPass _pass;
+        private DrawReflectionPass _pass;
         public override void Create()
         {
-            _pass = new PixelProjectedReflectionPass(_settings);
+            _pass = new DrawReflectionPass(_settings);
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             // Debug.Log(renderer.cameraDepth);
-            _pass.Setup(renderer.cameraColorTarget, renderer.cameraDepth);
+            // _pass.Setup(renderer.cameraColorTarget, renderer.cameraDepth);
             renderer.EnqueuePass(_pass);
         }
+        
     }
 }

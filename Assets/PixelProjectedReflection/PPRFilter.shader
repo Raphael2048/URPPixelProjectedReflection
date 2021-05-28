@@ -1,4 +1,4 @@
-﻿Shader "Filter"
+﻿Shader "Hidden/PPR/Filter"
 {
     
     Properties
@@ -76,7 +76,6 @@
         {
             float2 uv = input.vertex.xy * (_ScreenParams.zw - 1.0f);
             return SAMPLE_TEXTURE2D_X(_CopyTexture, sampler_CopyTexture, uv);
-            return SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv);
         }
         
     ENDHLSL

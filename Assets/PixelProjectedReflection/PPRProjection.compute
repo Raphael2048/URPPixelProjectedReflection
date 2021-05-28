@@ -2,14 +2,11 @@
 #pragma kernel Clear
 #pragma kernel Project
 
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-#include "Function.hlsl"
+#include "PPRFunction.hlsl"
 
 
 RWTexture2D<uint> _IntermediateTexture;
+// RWTexture2D<float2> _DebugTexture;
 Texture2D<float> _CameraDepthTexture;
 float4 _TextureSize;
 float3 _WSCameraPos;
@@ -29,8 +26,7 @@ void Clear(uint3 id : SV_DispatchThreadID)
 
 void ProjectionPassWrite(int2 ReflectedPixel, float2 ReflectingCoord)
 {
-//     int2 P = floor(ReflectingCoord);
-//     _IntermediateTexture[P] = float4(1, 0, 0, 1);
+
     for(int y = 0; y < 2; ++y)
     {
         for(int x = 0; x < 2; ++x)
@@ -39,7 +35,6 @@ void ProjectionPassWrite(int2 ReflectedPixel, float2 ReflectingCoord)
             int2 PixelOffset = ReflectingPixel - ReflectedPixel;
             
             uint Value = EncodeProjectionBufferValue(PixelOffset);
-//             _IntermediateTexture[ReflectingPixel] = float4(1, 0,  0, 1);
             InterlockedMin(_IntermediateTexture[ReflectingPixel], Value);
         }
     }
@@ -50,14 +45,9 @@ void Project (uint3 id : SV_DispatchThreadID)
 {
     if(all(id.xy < (uint2)(_TextureSize.xy)))
     {
+        // _DebugTexture[id.xy] = 0;
         float2 uv = (id.xy + 0.5) * _TextureSize.zw;
         float depth = _CameraDepthTexture.Load(int3(id.xy, 0));
-        #ifdef UNITY_REVERSED_Z
-            if(depth == 0)
-        #else
-            if(depth == 1)
-        #endif
-        return;
         float3 ndc = float3(uv * 2 - 1, depth);
         
         // 被反射的目标点的世界坐标
@@ -65,23 +55,19 @@ void Project (uint3 id : SV_DispatchThreadID)
         wpos /= wpos.w;
         
         float distance = dot(_ReflectionPlane, wpos);
+
+        
         if(distance > 0.01)
         {
             float3 MirroredPosition = wpos.xyz - _ReflectionPlane.xyz * (2 * distance);
             float4 MirroredNDC = mul(_WorldToClipMatrix, float4(MirroredPosition, 1));
             float2 MirroredUV = MirroredNDC.xy / MirroredNDC.w;
-            
+            // _DebugTexture[id.xy] = MirroredUV;
             if(all(abs(MirroredUV) < 1.0f))
             {
                 float2 MirroredPixelCoord = (MirroredUV * 0.5f + 0.5f) * _TextureSize.xy;
                 ProjectionPassWrite(id.xy, MirroredPixelCoord);
-//                 int2 ReflectingPixel = floor(ReflectingCoord + float2(x, y));
-//                 int2 Mirrored = floor(MirroredPixelCoord);
-//                 int2 PixelOffset = MirroredPixelCoord - id.xy;
-//                 _IntermediateTexture[Mirrored] = float4(abs(PixelOffset) / 100.0f, 0, 1);
-//                 _IntermediateTexture[Mirrored] = float4(1, 0, 0, 1);
             }
-            
         }
         
     }

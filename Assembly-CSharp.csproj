@@ -58,17 +58,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-     <Compile Include="Assets\Scripts\PixelProjectedReflectionFeature.cs" />
-     <Compile Include="Assets\Scripts\PixelProjectedReflectionPass.cs" />
-     <Compile Include="Assets\Scripts\PixelProjectedReflectionPlane.cs" />
-     <Compile Include="Assets\Scripts\SimpleCameraController.cs" />
+     <Compile Include="Assets\PixelProjectedReflection\DrawReflectionPass.cs" />
+     <Compile Include="Assets\PixelProjectedReflection\PixelProjectedReflectionPlane.cs" />
+     <Compile Include="Assets\PixelProjectedReflection\PixelProjectedReflectionRendererFeature.cs" />
      <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
+     <None Include="Assets\PixelProjectedReflection\H3DPPR.shader" />
+     <None Include="Assets\PixelProjectedReflection\PPRProjection.compute" />
      <None Include="Assets\Shaders\UniversalPipelineTemplateShader.shader" />
-     <None Include="Assets\Shaders\ReflectionPlane.shader" />
-     <None Include="Assets\Shaders\Function.hlsl" />
-     <None Include="Assets\Shaders\Filter.shader" />
-     <None Include="Assets\Shaders\ProjectedReflectionPlane.shader" />
-     <None Include="Assets\Shaders\Projection.compute" />
+     <None Include="Assets\PixelProjectedReflection\PPRReflection.shader" />
+     <None Include="Assets\PixelProjectedReflection\PPRFunction.hlsl" />
+     <None Include="Assets\PixelProjectedReflection\PPRFilter.shader" />
+     <None Include="Assets\PixelProjectedReflection\ProjectedReflectionPlane.shader" />
  <Reference Include="Unity.RenderPipeline.Universal.ShaderLibrary">
  <HintPath>D:/Unity/PixelProjectedReflection/Library/ScriptAssemblies/Unity.RenderPipeline.Universal.ShaderLibrary.dll</HintPath>
  </Reference>
