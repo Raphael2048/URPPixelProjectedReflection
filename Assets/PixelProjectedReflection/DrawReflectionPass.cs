@@ -13,8 +13,9 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
         private Shader PPRReflectionPS, PPRFilterPS;
         private Material PPRReflection, PPRFilter;
         private RenderTexture intermediateTexture;
-        private RenderTargetHandle _tempRT1, _tempRT2, _tempRT3;
-        private RenderTexture _result, _result2;
+        private RenderTargetHandle _tempRT1, _tempRT2;
+        private RenderTargetHandle _final;
+        private PixelProjectedReflectionPlane _plane;
 
         public DrawReflectionPass(PixelProjectedReflectionRendererFeature.Settings settings)
         { 
@@ -30,25 +31,43 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
             
             _tempRT1.Init("PPR_TEMP1");
             _tempRT2.Init("PPR_TEMP2");
-            _tempRT3.Init("PPR_TEMP3");
+            _final.Init("_MirrorTexture");
+        }
+
+        public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDesc)
+        {
+            if (_plane == null)
+            {
+                _plane = Object.FindObjectOfType<PixelProjectedReflectionPlane>();
+            }
+
+            if (_plane.PreFilterValue > 0)
+            {
+                cmd.GetTemporaryRT(_final.id, cameraTextureDesc.width / 2, cameraTextureDesc.height / 2, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
+            }
+            else
+            {
+                cmd.GetTemporaryRT(_final.id, cameraTextureDesc.width , cameraTextureDesc.height, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
+            }
+            ConfigureTarget(_final.Identifier());
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            PixelProjectedReflectionPlane plane = Object.FindObjectOfType<PixelProjectedReflectionPlane>();
-            if (!plane || !plane.enabled) return;
+            if (!_plane || !_plane.enabled) return;
             
-            var renderer = plane.GetComponent<Renderer>();
+            var renderer = _plane.GetComponent<Renderer>();
             if (!renderer.isVisible) return;
 
             if (PPRReflection == null) PPRReflection = new Material(PPRReflectionPS);
             if (PPRFilter == null) PPRFilter = new Material(PPRFilterPS);
             
+
             CommandBuffer cmd = CommandBufferPool.Get(m_ProfilerTag);
             using (new ProfilingScope(cmd, m_ProfilingSampler))
             {
                 Camera camera = renderingData.cameraData.camera;
-                Matrix4x4 m = plane.gameObject.transform.localToWorldMatrix;
+                Matrix4x4 m = _plane.gameObject.transform.localToWorldMatrix;
                 Plane p = new Plane(Vector3.up, Vector3.zero);
                 p = m.TransformPlane(p);
                 var cameraTextureDesc = renderingData.cameraData.cameraTargetDescriptor;
@@ -63,6 +82,7 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
                     intermediateTexture.Create();
                 }
 
+               
                 // if (debugTexture == null)
                 // {
                 //     debugTexture = new RenderTexture(cameraTextureDesc.width, cameraTextureDesc.height, 0, GraphicsFormat.R16G16_SFloat);
@@ -85,11 +105,6 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
 
                     cmd.DispatchCompute(PPRProjection, 1, (cameraTextureDesc.width + 7) / 8, (cameraTextureDesc.height + 7) / 8, 1);
                 }
-                
-                
-                cmd.GetTemporaryRT(_tempRT1.id, cameraTextureDesc.width , cameraTextureDesc.height, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
-                cmd.GetTemporaryRT(_tempRT2.id, cameraTextureDesc.width / 2 , cameraTextureDesc.height / 2, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
-                cmd.GetTemporaryRT(_tempRT3.id, cameraTextureDesc.width / 2 , cameraTextureDesc.height / 2, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
 
                 {
                     var matrix = GL.GetGPUProjectionMatrix(camera.projectionMatrix, true) * camera.worldToCameraMatrix;
@@ -104,42 +119,27 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
                         PPRReflection.SetTexture("_ReflectionProbe", probes[0].probe.texture);
                     }
 
-                    if (plane.PreFilterValue > 0)
+                    if (_plane.PreFilterValue > 0)
                     {
-                        if (_result2 == null || _result2.width != cameraTextureDesc.width / 2 ||
-                            _result2.height != cameraTextureDesc.height / 2)
-                        {
-                            if(_result2 != null) _result2.Release();
-                            _result2 = new RenderTexture(cameraTextureDesc.width / 2, cameraTextureDesc.height / 2, 0,  cameraTextureDesc.graphicsFormat);
-                        }
-                        cmd.Blit(0,_tempRT1.Identifier(), PPRReflection);
-                        PPRFilter.SetFloat("_BlurSize", plane.PreFilterValue);
+                        cmd.GetTemporaryRT(_tempRT1.id, cameraTextureDesc.width , cameraTextureDesc.height, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
+                        cmd.GetTemporaryRT(_tempRT2.id, cameraTextureDesc.width / 2 , cameraTextureDesc.height / 2, 0, FilterMode.Bilinear, cameraTextureDesc.graphicsFormat);
+                        
+                        cmd.Blit(-1,_tempRT1.Identifier(), PPRReflection);
+                        PPRFilter.SetFloat("_BlurSize", _plane.PreFilterValue);
                         cmd.Blit(_tempRT1.Identifier(), _tempRT2.Identifier(), PPRFilter, 0);
-                        if (plane.DualBlur)
+                        cmd.Blit(_tempRT2.Identifier(), _final.Identifier(), PPRFilter, 1);
+                        if (_plane.DualBlur)
                         {
-                            cmd.Blit(_tempRT2.Identifier(), _tempRT3.Identifier(), PPRFilter, 1);
-                            cmd.Blit(_tempRT3.Identifier(), _tempRT2.Identifier(), PPRFilter, 0);
-                            cmd.Blit(_tempRT2.Identifier(), _result2, PPRFilter, 1);
+                            cmd.Blit(_final.Identifier(), _tempRT2.Identifier(), PPRFilter, 0);
+                            cmd.Blit(_tempRT2.Identifier(), _final.Identifier(), PPRFilter, 1);
                         }
-                        else
-                        {
-                            cmd.Blit(_tempRT2.Identifier(), _result2, PPRFilter, 1);
-                        }
-                        cmd.SetGlobalTexture("_MirrorTexture", _result2);
                     }
                     else
                     {
-                        if (_result == null || _result.width != cameraTextureDesc.width ||
-                            _result.height != cameraTextureDesc.height)
-                        {
-                            if(_result != null) _result.Release();
-                            _result = new RenderTexture(cameraTextureDesc.width, cameraTextureDesc.height, 0,  cameraTextureDesc.graphicsFormat);
-                        }
-                        cmd.Blit(0,_result, PPRReflection);
-                        cmd.SetGlobalTexture("_MirrorTexture", _result);
+                        
+                        cmd.Blit(-1,_final.Identifier(), PPRReflection);
                     }
                 }
-                
             }
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
@@ -150,7 +150,7 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
         {
             cmd.ReleaseTemporaryRT(_tempRT1.id);
             cmd.ReleaseTemporaryRT(_tempRT2.id);
-            cmd.ReleaseTemporaryRT(_tempRT3.id);
+            cmd.ReleaseTemporaryRT(_final.id);
         }
     }
     

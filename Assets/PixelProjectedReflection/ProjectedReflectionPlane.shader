@@ -331,6 +331,7 @@ Shader "ProjectedReflectionPlane"
 				color = MixFog(color, fogFactor);
 				return half4(color, surfaceData.alpha);
 			}
+			
 			ENDHLSL
 		}
 
