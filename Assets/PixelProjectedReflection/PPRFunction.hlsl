@@ -12,7 +12,7 @@ uint GetPackingBasisIndexTwoBits (int2 PixelOffset)
 const static int4 BasisSnappedMatrices[4] = { int4(0, -1, 1, 0) , int4(0, 1, -1, 0), int4(1, 0, 0, 1), int4(-1, 0, 0, -1) };
 
 // Encode offset for ' projection buffer ' storage
-uint EncodeProjectionBufferValue(int2 PixelOffset)
+uint EncodeProjectionBufferValue(int2 PixelOffset, int Distance)
 {
 	// build snapped basis
 	uint PackingBasisIndex = GetPackingBasisIndexTwoBits(PixelOffset);
@@ -22,27 +22,30 @@ uint EncodeProjectionBufferValue(int2 PixelOffset)
 
 	uint EncodeValue = 0;
 
-	// pack whole part
-	EncodeValue = ((TransformedPixelOffset.y << 12) | (abs(TransformedPixelOffset.x) << 1) | (TransformedPixelOffset.x >= 0 ? 1 : 0)) << 2;
-
-	// pack basis part
-	EncodeValue += PackingBasisIndex;
+	EncodeValue = TransformedPixelOffset.y << 20;
+	EncodeValue |= ((abs(TransformedPixelOffset.x) << 1) | (TransformedPixelOffset.x >= 0 ? 1 : 0)) << 8;
+	EncodeValue |= Distance << 2;
+	EncodeValue |= PackingBasisIndex;
 
 	return EncodeValue;
 }
 
-int2 DecodeProjectionBufferValue(uint EncodeValue)
+void DecodeProjectionBufferValue(uint EncodeValue, out int2 PixelOffset, out int Distance)
 {
 	// unpack basis part
 	uint PackingBasisIndex = EncodeValue & 3;
+	
 	EncodeValue = EncodeValue >> 2;
 
-	int2 PixelOffset;
+	Distance = EncodeValue & 63;
+
+	EncodeValue = EncodeValue >> 6;
+	
 	// unpack whole part
 	PixelOffset.x = ((EncodeValue & 1) == 1 ? 1 : -1) * ((EncodeValue >> 1) & 2047);
 	EncodeValue = EncodeValue >> 12;
 	PixelOffset.y = EncodeValue;
             
 	PixelOffset = int2(dot(PixelOffset, BasisSnappedMatrices[PackingBasisIndex].xz), dot(PixelOffset, BasisSnappedMatrices[PackingBasisIndex].yw));
-	return PixelOffset;
+	
 }

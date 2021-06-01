@@ -8,16 +8,36 @@
     HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-        #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 
+        #pragma shader_feature_local _USE_INTENSITY_TEXTURE_
+    
         TEXTURE2D(_MainTex);
-        SAMPLER(sampler_MainTex);
         float4 _MainTex_TexelSize;
-
         TEXTURE2D(_CopyTexture);
-        SAMPLER(sampler_CopyTexture);
-
+        TEXTURE2D(_IntensityHalf);
+        TEXTURE2D(_IntensityFull);
+        TEXTURE2D(_MirrorOriginTexture);
+    
+        SAMPLER(sampler_LinearClamp);
+    
         float _BlurSize;
+        // float _PreMultipy;
+    
+        const static int kTapCount = 5;
+        const static float kOffsets[] = {
+            -3.23076923,
+            -1.38461538,
+             0.00000000,
+             1.38461538,
+             3.23076923
+        };
+        const static half kCoeffs[] = {
+             0.07027027,
+             0.31621622,
+             0.22702703,
+             0.31621622,
+             0.07027027
+        };
 
         struct Attributes
         {
@@ -41,42 +61,107 @@
 
             return output;
         }
-        float4 blur_h(Varyings input) : SV_Target
+    
+        half4 blur_h(Varyings input) : SV_Target
         {
             float texelSize = _MainTex_TexelSize.x * _BlurSize;
-            half3 c0 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv - float2(texelSize * 3.23076923, 0.0)).rgb;
-            half3 c1 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv - float2(texelSize * 1.38461538, 0.0)).rgb;
-            half3 c2 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv).rgb;  
-            half3 c3 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv + float2(texelSize * 1.38461538, 0.0)).rgb;
-            half3 c4 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv + float2(texelSize * 3.23076923, 0.0)).rgb;
-
-            half3 color = c0 * 0.07027027 + c1 * 0.31621622
-                    + c2 * 0.22702703
-                    + c3 * 0.31621622 + c4 * 0.07027027;
-            return float4(color, 1);
+            half3 color = 0;
+            UNITY_UNROLL
+            for (int i = 0; i < kTapCount; i++)
+            {
+                color += SAMPLE_TEXTURE2D_X(_MainTex, sampler_LinearClamp, input.uv + float2(texelSize * kOffsets[i], 0)).rgb * kCoeffs[i];
+            }
+            return half4(color, 1);
         }
 
-        float4 blur_v(Varyings input) : SV_Target
+        half4 blur_v(Varyings input) : SV_Target
         {
             float texelSize = _MainTex_TexelSize.y * _BlurSize;
-            half3 c0 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv - float2(0.0, texelSize * 3.23076923)).rgb;
-            half3 c1 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv - float2(0.0, texelSize * 1.38461538)).rgb;
-            half3 c2 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv).rgb;  
-            half3 c3 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv + float2(0.0, texelSize * 1.38461538)).rgb;
-            half3 c4 = SAMPLE_TEXTURE2D_X(_MainTex, sampler_MainTex, input.uv + float2(0.0, texelSize * 3.23076923)).rgb;
-
-            half3 color = c0 * 0.07027027 + c1 * 0.31621622
-                    + c2 * 0.22702703
-                    + c3 * 0.31621622 + c4 * 0.07027027;
-
-            return float4(color, 1);
+            half3 color = 0;
+            UNITY_UNROLL
+            for (int i = 0; i < kTapCount; i++)
+            {
+                color += SAMPLE_TEXTURE2D_X(_MainTex, sampler_LinearClamp, input.uv + float2(0, texelSize * kOffsets[i])).rgb * kCoeffs[i];
+            }
+            return half4(color, 1);
         }
-    
-        float4 combine(Varyings input) : SV_Target
+
+        half4 blur_h_adaptive(Varyings input) : SV_Target
         {
-            float2 uv = input.vertex.xy * (_ScreenParams.zw - 1.0f);
-            return SAMPLE_TEXTURE2D_X(_CopyTexture, sampler_CopyTexture, uv);
+            half BaseIntensity = SAMPLE_TEXTURE2D_X(_IntensityHalf, sampler_LinearClamp, input.uv);
+            float texelSize = _MainTex_TexelSize.x * _BlurSize * BaseIntensity;
+            
+            float4 acc = 0;
+            UNITY_UNROLL
+            for (int i = 0; i < kTapCount; i++)
+            {
+                float2 SampleCoord = input.uv + float2(texelSize * kOffsets[i], 0);
+                half sampleIntensity = SAMPLE_TEXTURE2D_X(_IntensityHalf, sampler_LinearClamp, SampleCoord);
+                half3 sampleColor = SAMPLE_TEXTURE2D_X(_MainTex, sampler_LinearClamp, SampleCoord);
+
+                float weight = saturate(1.0 - (sampleIntensity - BaseIntensity));
+                acc += half4(sampleColor, 1) * kCoeffs[i] * weight;
+            }
+            acc.xyz /= acc.w + 1e-4;
+            return half4(acc.xyz, 1.0);
         }
+
+        float4 blur_v_adaptive(Varyings input) : SV_Target
+        {
+            half BaseIntensity = SAMPLE_TEXTURE2D_X(_IntensityHalf, sampler_LinearClamp, input.uv);
+            float texelSize = _MainTex_TexelSize.y * _BlurSize * BaseIntensity;
+            
+            float4 acc = 0;
+            UNITY_UNROLL
+            for (int i = 0; i < kTapCount; i++)
+            {
+                float2 SampleCoord = input.uv + float2(0, texelSize * kOffsets[i]);
+                half sampleIntensity = SAMPLE_TEXTURE2D_X(_IntensityHalf, sampler_LinearClamp, SampleCoord);
+                half3 sampleColor = SAMPLE_TEXTURE2D_X(_MainTex, sampler_LinearClamp, SampleCoord);
+
+                float weight = saturate(1.0 - (sampleIntensity - BaseIntensity));
+                acc += half4(sampleColor, 1) * kCoeffs[i] * weight;
+            }
+            acc.xyz /= acc.w + 1e-4;
+            return half4(acc.xyz, 1.0);
+        }
+
+        half4 composite(Varyings input) : SV_Target
+        {
+            half3 color = SAMPLE_TEXTURE2D_X(_MirrorOriginTexture, sampler_LinearClamp, input.uv);
+            half intensity = SAMPLE_TEXTURE2D_X(_IntensityFull, sampler_LinearClamp, input.uv);
+            half3 blurColor = SAMPLE_TEXTURE2D_X(_MainTex, sampler_LinearClamp, input.uv);
+            
+            half3 dstColor = 0.0;
+            half dstAlpha = 1.0f;
+            
+            UNITY_BRANCH
+            if (intensity > 0)
+            {
+                half blend = sqrt(intensity * TWO_PI);
+                dstColor = blurColor * saturate(blend);
+                dstAlpha = saturate(1.0f - blend);
+            }
+            
+            return half4(color * dstAlpha + dstColor, 1.0f); 
+        }
+
+        struct ReflectionOutput
+        {
+            half3 color : SV_Target0;
+            half  blur   : SV_Target1;
+        };
+
+        ReflectionOutput prefilter(Varyings input)
+        {
+            ReflectionOutput output;
+            output.blur = SAMPLE_TEXTURE2D_X(_IntensityFull, sampler_LinearClamp, input.uv);
+            output.color = SAMPLE_TEXTURE2D_X(_MirrorOriginTexture, sampler_LinearClamp, input.uv);
+            // output.color = SAMPLE_TEXTURE2D_X(_MirrorOriginTexture, sampler_LinearClamp, input.uv) * output.blur;
+            return output;
+        }
+            
+        
         
     ENDHLSL
     
@@ -107,11 +192,38 @@
         
         Pass
         {
-            ZTest LEqual Cull Back ZWrite On 
-            Name "Combine"
+            Name "Blur H Adaptive"
             HLSLPROGRAM
                 #pragma vertex vert
-                #pragma fragment combine
+                #pragma fragment blur_h_adaptive
+            ENDHLSL
+        }
+        
+        Pass
+        {
+            Name "Blur V Adaptive"
+            HLSLPROGRAM
+                #pragma vertex vert
+                #pragma fragment blur_v_adaptive
+            ENDHLSL
+        }
+
+        
+        Pass
+        {
+            Name "Composite"
+            HLSLPROGRAM
+                #pragma vertex vert
+                #pragma fragment composite
+            ENDHLSL
+        }
+        
+        Pass
+        {
+            Name "PreFilter"
+            HLSLPROGRAM
+                #pragma vertex vert
+                #pragma fragment prefilter
             ENDHLSL
         }
     }

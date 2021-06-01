@@ -14,6 +14,7 @@ float4 _ReflectionPlane;
 float4x4 _WorldToClipMatrix;
 float4x4 _ClipToWorldMatrix;
 
+float _BlurMaxDistance;
 
 [numthreads(8, 8, 1)]
 void Clear(uint3 id : SV_DispatchThreadID)
@@ -24,17 +25,19 @@ void Clear(uint3 id : SV_DispatchThreadID)
     }
 }
 
-void ProjectionPassWrite(int2 ReflectedPixel, float2 ReflectingCoord)
+void ProjectionPassWrite(int2 ReflectedPixel, float2 ReflectingCoord, int distance)
 {
+    int2 Base = floor(ReflectingCoord);
 
+    [unroll]
     for(int y = 0; y < 2; ++y)
     {
         for(int x = 0; x < 2; ++x)
         {
-            int2 ReflectingPixel = floor(ReflectingCoord + float2(x, y));
+            int2 ReflectingPixel = Base + int2(x, y);
             int2 PixelOffset = ReflectingPixel - ReflectedPixel;
             
-            uint Value = EncodeProjectionBufferValue(PixelOffset);
+            uint Value = EncodeProjectionBufferValue(PixelOffset, distance);
             InterlockedMin(_IntermediateTexture[ReflectingPixel], Value);
         }
     }
@@ -56,17 +59,19 @@ void Project (uint3 id : SV_DispatchThreadID)
         
         float distance = dot(_ReflectionPlane, wpos);
 
-        
+        [branch]
         if(distance > 0.01)
         {
             float3 MirroredPosition = wpos.xyz - _ReflectionPlane.xyz * (2 * distance);
             float4 MirroredNDC = mul(_WorldToClipMatrix, float4(MirroredPosition, 1));
             float2 MirroredUV = MirroredNDC.xy / MirroredNDC.w;
             // _DebugTexture[id.xy] = MirroredUV;
+            [branch]
             if(all(abs(MirroredUV) < 1.0f))
             {
                 float2 MirroredPixelCoord = (MirroredUV * 0.5f + 0.5f) * _TextureSize.xy;
-                ProjectionPassWrite(id.xy, MirroredPixelCoord);
+                int IntDistance = clamp((int)(distance * _BlurMaxDistance * 64), 0, 63);
+                ProjectionPassWrite(id.xy, MirroredPixelCoord, IntDistance);
             }
         }
         

@@ -25,8 +25,6 @@ namespace UnityEngine.Experiemntal.Rendering.Universal
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            // Debug.Log(renderer.cameraDepth);
-            // _pass.Setup(renderer.cameraColorTarget, renderer.cameraDepth);
             renderer.EnqueuePass(_pass);
         }
         
