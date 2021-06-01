@@ -6,7 +6,6 @@
 
 
 RWTexture2D<uint> _IntermediateTexture;
-// RWTexture2D<float2> _DebugTexture;
 Texture2D<float> _CameraDepthTexture;
 float4 _TextureSize;
 float3 _WSCameraPos;
@@ -48,7 +47,6 @@ void Project (uint3 id : SV_DispatchThreadID)
 {
     if(all(id.xy < (uint2)(_TextureSize.xy)))
     {
-        // _DebugTexture[id.xy] = 0;
         float2 uv = (id.xy + 0.5) * _TextureSize.zw;
         float depth = _CameraDepthTexture.Load(int3(id.xy, 0));
         float3 ndc = float3(uv * 2 - 1, depth);
@@ -65,7 +63,6 @@ void Project (uint3 id : SV_DispatchThreadID)
             float3 MirroredPosition = wpos.xyz - _ReflectionPlane.xyz * (2 * distance);
             float4 MirroredNDC = mul(_WorldToClipMatrix, float4(MirroredPosition, 1));
             float2 MirroredUV = MirroredNDC.xy / MirroredNDC.w;
-            // _DebugTexture[id.xy] = MirroredUV;
             [branch]
             if(all(abs(MirroredUV) < 1.0f))
             {

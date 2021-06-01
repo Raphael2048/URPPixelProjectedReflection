@@ -233,7 +233,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1986291140878450, guid: a87f0180d46fd334b9025d0314a0dc70, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1986291140878450, guid: a87f0180d46fd334b9025d0314a0dc70, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -251,6 +251,29 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 296138508}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &296138510 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1986291140878450, guid: a87f0180d46fd334b9025d0314a0dc70,
+    type: 3}
+  m_PrefabInstance: {fileID: 296138508}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &296138511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 296138510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2170dd0766f04544f886283a04e230ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Offset: 0
+  PreFilterValue: 0.87
+  DualBlur: 1
+  AdaptiveBlur: 1
+  BlurMaxDistance: 1.6
 --- !u!1 &653260035
 GameObject:
   m_ObjectHideFlags: 0
@@ -418,14 +441,13 @@ GameObject:
   - component: {fileID: 1383236307}
   - component: {fileID: 1383236306}
   - component: {fileID: 1383236305}
-  - component: {fileID: 1383236304}
   m_Layer: 0
   m_Name: Ground (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1383236303
 Transform:
   m_ObjectHideFlags: 0
@@ -440,22 +462,6 @@ Transform:
   m_Father: {fileID: 296138509}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1383236304
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1383236302}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2170dd0766f04544f886283a04e230ab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  PreFilterValue: 2.05
-  AdaptiveBlur: 0
-  DualBlur: 0
-  BlurMaxDistance: 1
 --- !u!65 &1383236305
 BoxCollider:
   m_ObjectHideFlags: 0

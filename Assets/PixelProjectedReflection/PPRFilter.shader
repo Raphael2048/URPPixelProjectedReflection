@@ -8,8 +8,6 @@
     HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-
-        #pragma shader_feature_local _USE_INTENSITY_TEXTURE_
     
         TEXTURE2D(_MainTex);
         float4 _MainTex_TexelSize;
@@ -17,11 +15,11 @@
         TEXTURE2D(_IntensityHalf);
         TEXTURE2D(_IntensityFull);
         TEXTURE2D(_MirrorOriginTexture);
+        float4 _MirrorOriginTexture_TexelSize;
     
         SAMPLER(sampler_LinearClamp);
     
         float _BlurSize;
-        // float _PreMultipy;
     
         const static int kTapCount = 5;
         const static float kOffsets[] = {
@@ -154,7 +152,34 @@
 
         ReflectionOutput prefilter(Varyings input)
         {
+            // const int kCount = 5;
+            // const float2 kTaps[] = {
+            //     float2( 0.0,  0.0),
+            //     float2( 0.9, -0.4),
+            //     float2(-0.9,  0.4),
+            //     float2( 0.4,  0.9),
+            //     float2(-0.4, -0.9)
+            // };
+            // half3 colorAcc = 0.0;
+            // half farCoCAcc = 0.0;
+            //
+            // UNITY_UNROLL
+            // for (int i = 0; i < kCount; i++)
+            // {
+            //     float2 tapCoord = _MirrorOriginTexture_TexelSize.xy * kTaps[i] + input.uv;
+            //     half3 tapColor = SAMPLE_TEXTURE2D_X(_MirrorOriginTexture, sampler_LinearClamp, tapCoord).xyz;
+            //     half coc = SAMPLE_TEXTURE2D_X(_IntensityFull, sampler_LinearClamp, tapCoord).x;
+            //
+            //     // Pre-multiply CoC to reduce bleeding of background blur on focused areas
+            //     // colorAcc += tapColor * coc;
+            //     farCoCAcc += coc;
+            //     colorAcc += tapColor;
+            // }
+            //
             ReflectionOutput output;
+            // output.blur = farCoCAcc * rcp(kCount);
+            // output.color = colorAcc * rcp(kCount);
+            
             output.blur = SAMPLE_TEXTURE2D_X(_IntensityFull, sampler_LinearClamp, input.uv);
             output.color = SAMPLE_TEXTURE2D_X(_MirrorOriginTexture, sampler_LinearClamp, input.uv);
             // output.color = SAMPLE_TEXTURE2D_X(_MirrorOriginTexture, sampler_LinearClamp, input.uv) * output.blur;
