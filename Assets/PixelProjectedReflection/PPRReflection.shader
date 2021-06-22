@@ -28,6 +28,7 @@
             
             TextureCube<float4> _ReflectionProbe;
             SAMPLER(sampler_ReflectionProbe);
+            real4 _ReflectionProbe_HDR;
             float4 _TextureSize;
             float4 _ReflectionPlane;
             float4x4 _ClipToWorldMatrix;
@@ -78,7 +79,12 @@
                     float3 viewDirWS = normalize(input.viewDirWS);
                     float3 reflectDir = reflect(-viewDirWS, _ReflectionPlane.xyz);
                     half4 encodedIrradiance = SAMPLE_TEXTURECUBE_LOD(_ReflectionProbe, sampler_ReflectionProbe, reflectDir, 0);
-                    half3 irradiance = encodedIrradiance.rgb;
+                    #if !defined(UNITY_USE_NATIVE_HDR)
+                        half3 irradiance = DecodeHDREnvironment(encodedIrradiance, _ReflectionProbe_HDR);
+                    #else
+                        half3 irradiance = encodedIrradiance.rgb;
+                    #endif
+                    // half3 irradiance = encodedIrradiance.rgb;
 
                     color = lerp(irradiance, color, alpha);
                 }
