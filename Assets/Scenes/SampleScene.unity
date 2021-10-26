@@ -65,7 +65,7 @@ LightmapSettings:
     m_ExtractAmbientOcclusion: 0
     m_Padding: 2
     m_LightmapParameters: {fileID: 0}
-    m_LightmapsBakeMode: 0
+    m_LightmapsBakeMode: 1
     m_TextureCompression: 1
     m_FinalGather: 0
     m_FinalGatherFiltering: 1
@@ -270,10 +270,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Offset: 0
-  PreFilterValue: 0.87
+  PreFilterValue: 1.026
   DualBlur: 1
   AdaptiveBlur: 1
-  BlurMaxDistance: 1.6
+  BlurMaxDistance: 11.23
 --- !u!1 &653260035
 GameObject:
   m_ObjectHideFlags: 0
